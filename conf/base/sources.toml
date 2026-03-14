@@ -1,0 +1,12 @@
+# Placeholder source definitions for Phase 2.
+# Keep source-specific settings here rather than scattering them in code.
+
+[source.ref_example]
+enabled = true
+kind = "file"
+path = "./sample_data/ref_example.json"
+
+[source.daily_example]
+enabled = true
+kind = "file"
+path = "./sample_data/daily_example.json"

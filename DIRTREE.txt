@@ -1,0 +1,112 @@
+rs-foundry/
+├── Cargo.toml
+├── Cargo.lock
+├── rust-toolchain.toml
+├── docker-compose.yml
+├── .env
+├── .env.example
+├── README.md
+├── DIRTREE.md
+├── Makefile
+├── docker/
+│   ├── notebook.Dockerfile
+│   ├── runner.Dockerfile
+│   ├── worker.Dockerfile
+│   └── postgres-init/
+│       └── 001_init.sql
+├── conf/
+│   ├── base/
+│   │   ├── app.toml
+│   │   ├── sources.toml
+│   │   ├── sinks.toml
+│   │   └── quality.toml
+│   ├── dev/
+│   │   └── app.toml
+│   └── prod/
+│       └── app.toml
+├── data/
+│   ├── raw/
+│   ├── bronze/
+│   ├── silver/
+│   ├── gold/
+│   ├── checkpoints/
+│   └── runs/
+├── docs/
+│   ├── architecture.md
+│   ├── contracts/
+│   │   ├── bronze.md
+│   │   ├── silver.md
+│   │   └── gold.md
+│   └── phases/
+│       ├── PHASE_1_FOUNDATION.md
+│       ├── PHASE_2_BRONZE.md
+│       ├── PHASE_3_CONTROL_PLANE.md
+│       ├── PHASE_4_SILVER.md
+│       ├── PHASE_5_ASYNC.md
+│       └── PHASE_6_POLISH.md
+├── notebooks/
+│   ├── 00_setup.rsnb
+│   ├── bronze/
+│   ├── silver/
+│   └── gold/
+├── src/
+│   ├── lib.rs
+│   ├── core/
+│   │   ├── mod.rs
+│   │   ├── errors.rs
+│   │   ├── schemas.rs
+│   │   ├── types.rs
+│   │   └── metadata.rs
+│   ├── config/
+│   │   ├── mod.rs
+│   │   ├── paths.rs
+│   │   └── settings.rs
+│   ├── io/
+│   │   ├── mod.rs
+│   │   ├── files.rs
+│   │   ├── http.rs
+│   │   ├── parquet.rs
+│   │   ├── postgres.rs
+│   │   └── object_store.rs
+│   ├── quality/
+│   │   ├── mod.rs
+│   │   ├── checks.rs
+│   │   ├── contracts.rs
+│   │   └── report.rs
+│   ├── pipelines/
+│   │   ├── mod.rs
+│   │   ├── bronze/
+│   │   ├── silver/
+│   │   └── gold/
+│   ├── jobs/
+│   │   ├── mod.rs
+│   │   ├── bronze_ref_job.rs
+│   │   ├── bronze_daily_job.rs
+│   │   ├── silver_ref_job.rs
+│   │   └── silver_conformed_job.rs
+│   ├── orchestration/
+│   │   ├── mod.rs
+│   │   ├── run_registry.rs
+│   │   ├── queue.rs
+│   │   ├── scheduler.rs
+│   │   └── dispatcher.rs
+│   └── api/
+│       ├── mod.rs
+│       ├── handlers.rs
+│       ├── routes.rs
+│       ├── models.rs
+│       └── state.rs
+├── src/bin/
+│   ├── runner_api.rs
+│   ├── worker.rs
+│   ├── bronze_ref_ingest.rs
+│   ├── bronze_daily_ingest.rs
+│   ├── silver_ref_build.rs
+│   └── silver_conformed_build.rs
+└── tests/
+    ├── config_tests.rs
+    ├── bronze_tests.rs
+    ├── silver_tests.rs
+    ├── quality_tests.rs
+    ├── api_tests.rs
+    └── orchestration_tests.rs

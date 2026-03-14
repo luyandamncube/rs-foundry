@@ -1,0 +1,6 @@
+# Placeholder quality defaults for Phase 2.
+
+[quality]
+fail_on_required_columns = true
+fail_on_nulls = false
+fail_on_schema_drift = true

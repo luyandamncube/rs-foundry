@@ -1,0 +1,84 @@
+name: rs-foundry
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rs-foundry-postgres
+    environment:
+      POSTGRES_DB: rs_foundry
+      POSTGRES_USER: rs_foundry
+      POSTGRES_PASSWORD: rs_foundry
+    ports:
+      - "5432:5432"
+    volumes:
+      - rs_foundry_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rs_foundry -d rs_foundry"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  runner:
+    build:
+      context: .
+      dockerfile: docker/runner.Dockerfile
+    container_name: rs-foundry-runner
+    env_file:
+      - .env
+    environment:
+      APP_ENV: dev
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DATA_ROOT: /app/data
+      CONF_ROOT: /app/conf
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./conf:/app/conf
+      - ./data:/app/data
+      - ./notebooks:/app/notebooks
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: rs-foundry-worker
+    env_file:
+      - .env
+    environment:
+      APP_ENV: dev
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DATA_ROOT: /app/data
+      CONF_ROOT: /app/conf
+    volumes:
+      - ./conf:/app/conf
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - worker
+
+  notebook:
+    build:
+      context: .
+      dockerfile: docker/notebook.Dockerfile
+    container_name: rs-foundry-notebook
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./:/workspace
+    profiles:
+      - notebook
+
+volumes:
+  rs_foundry_postgres_data:

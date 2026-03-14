@@ -1,0 +1,6 @@
+# Placeholder sink definitions for Phase 2.
+
+[sink.local_lake]
+kind = "filesystem"
+root = "./data"
+format = "parquet"

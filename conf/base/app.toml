@@ -1,0 +1,15 @@
+app_name = "rs-foundry"
+app_host = "0.0.0.0"
+app_port = 8080
+app_env = "base"
+
+data_root = "./data"
+conf_root = "./conf"
+
+postgres_host = "localhost"
+postgres_port = 5432
+postgres_db = "rs_foundry"
+postgres_user = "rs_foundry"
+postgres_password = "rs_foundry"
+
+
