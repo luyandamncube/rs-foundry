@@ -1,6 +1,7 @@
 // src\bin\runner_api.rs
 use rs_foundry::api::{routes, state::AppState};
 use rs_foundry::config::{paths::DataPaths, settings::Settings};
+use rs_foundry::io::postgres::create_pool;
 use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -18,9 +19,14 @@ async fn main() -> anyhow::Result<()> {
     let data_paths = DataPaths::new(&settings.data_root);
     data_paths.ensure_layout()?;
 
+    let db_pool = create_pool(&settings.database_url())
+        .await
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
     let bind_addr = settings.bind_addr();
     let state = AppState {
         settings: settings.clone(),
+        db_pool,
     };
 
     let app = routes::router(state);
@@ -37,3 +43,4 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
     Ok(())
 }
+

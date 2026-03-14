@@ -21,10 +21,9 @@ pub struct BronzeDailyIngestResult {
     pub quality_report: QualityReport,
 }
 
-pub fn run_bronze_daily_pipeline() -> Result<BronzeDailyIngestResult, RsFoundryError> {
+pub fn run_bronze_daily_pipeline(run_id: RunId) -> Result<BronzeDailyIngestResult, RsFoundryError> {
     let data_root = Path::new("./data");
     let source_name = "daily_example";
-    let run_id = RunId::new();
 
     let source_records = sample_daily_source_records();
     let raw_payload = serde_json::to_string_pretty(&source_records).map_err(|e| {
@@ -150,3 +149,4 @@ pub fn write_bronze_daily_output(
 
     write_text(path, &payload)
 }
+

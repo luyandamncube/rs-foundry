@@ -21,10 +21,9 @@ pub struct BronzeRefIngestResult {
     pub quality_report: QualityReport,
 }
 
-pub fn run_bronze_ref_pipeline() -> Result<BronzeRefIngestResult, RsFoundryError> {
+pub fn run_bronze_ref_pipeline(run_id: RunId) -> Result<BronzeRefIngestResult, RsFoundryError> {
     let data_root = Path::new("./data");
     let source_name = "ref_example";
-    let run_id = RunId::new();
 
     let source_records = sample_ref_source_records();
     let raw_payload = serde_json::to_string_pretty(&source_records)
@@ -144,3 +143,4 @@ pub fn write_bronze_ref_output(
 
     write_text(path, &payload)
 }
+

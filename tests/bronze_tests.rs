@@ -83,7 +83,7 @@ fn bronze_ref_record_builder_enriches_source_records() {
 
 #[test]
 fn bronze_ref_pipeline_writes_raw_and_bronze_outputs() {
-    let result = run_bronze_ref_pipeline().unwrap();
+    let result = run_bronze_ref_pipeline(RunId::new()).unwrap();
 
     assert_eq!(result.source_name, "ref_example");
     assert_eq!(result.record_count, 3);
@@ -127,7 +127,7 @@ fn bronze_daily_record_builder_enriches_source_records() {
 
 #[test]
 fn bronze_daily_pipeline_writes_raw_and_bronze_outputs() {
-    let result = run_bronze_daily_pipeline().unwrap();
+    let result = run_bronze_daily_pipeline(RunId::new()).unwrap();
 
     assert_eq!(result.source_name, "daily_example");
     assert_eq!(result.record_count, 3);
