@@ -47,3 +47,7 @@ path = "src/bin/silver_ref_build.rs"
 [[bin]]
 name = "silver_conformed_build"
 path = "src/bin/silver_conformed_build.rs"
+
+[[bin]]
+name = "silver_daily_build"
+path = "src/bin/silver_daily_build.rs"

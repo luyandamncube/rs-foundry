@@ -1,5 +1,5 @@
 // src\core\metadata.rs
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::core::types::{Layer, SourceKind};
@@ -36,7 +36,7 @@ pub struct BronzeRefRecord {
 pub struct BronzeDailyRecord {
     pub event_id: String,
     pub ref_id: String,
-    pub event_date: chrono::NaiveDate,
+    pub event_date: NaiveDate,
     pub metric_value: f64,
     pub status: String,
     pub source_ts: Option<DateTime<Utc>>,
@@ -47,4 +47,64 @@ pub struct BronzeDailyRecord {
     pub ingested_at: DateTime<Utc>,
     pub load_date: String,
     pub record_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SilverRefRecord {
+    pub ref_id: String,
+    pub ref_name: String,
+    pub ref_type: String,
+    pub ref_name_normalized: String,
+    pub ref_type_normalized: String,
+    pub is_active: bool,
+    pub updated_at: Option<DateTime<Utc>>,
+
+    pub bronze_run_id: String,
+    pub source_name: String,
+    pub source_file: Option<String>,
+    pub bronze_ingested_at: DateTime<Utc>,
+    pub silver_built_at: DateTime<Utc>,
+    pub load_date: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SilverDailyRecord {
+    pub event_id: String,
+    pub ref_id: String,
+    pub event_date: NaiveDate,
+    pub metric_value: f64,
+    pub status: String,
+    pub status_normalized: String,
+    pub is_positive_metric: bool,
+    pub source_ts: Option<DateTime<Utc>>,
+
+    pub bronze_run_id: String,
+    pub source_name: String,
+    pub source_file: Option<String>,
+    pub bronze_ingested_at: DateTime<Utc>,
+    pub silver_built_at: DateTime<Utc>,
+    pub load_date: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SilverConformedRecord {
+    pub event_id: String,
+    pub ref_id: String,
+    pub ref_name: String,
+    pub ref_type: String,
+    pub ref_name_normalized: String,
+    pub ref_type_normalized: String,
+    pub ref_is_active: bool,
+
+    pub event_date: NaiveDate,
+    pub metric_value: f64,
+    pub status: String,
+    pub status_normalized: String,
+    pub is_positive_metric: bool,
+    pub source_ts: Option<DateTime<Utc>>,
+
+    pub ref_bronze_run_id: String,
+    pub daily_bronze_run_id: String,
+    pub silver_built_at: DateTime<Utc>,
+    pub load_date: String,
 }

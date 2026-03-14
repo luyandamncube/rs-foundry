@@ -1,13 +1,13 @@
-// src\bin\silver_ref_build.rs
+// src\bin\silver_daily_build.rs
 fn main() -> anyhow::Result<()> {
     let bronze_run_id = std::env::args()
         .nth(1)
         .ok_or_else(|| anyhow::anyhow!("missing bronze_run_id argument"))?;
 
-    let result = rs_foundry::jobs::silver_ref_job::execute(&bronze_run_id)
+    let result = rs_foundry::jobs::silver_daily_job::execute(&bronze_run_id)
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
-    println!("silver_ref_build complete");
+    println!("silver_daily_build complete");
     println!("bronze_run_id: {}", result.bronze_run_id);
     println!("source_name  : {}", result.source_name);
     println!("bronze_path  : {}", result.bronze_path.display());

@@ -219,10 +219,14 @@ cargo --version
 cargo check
 cargo test
 ```
-## 2. Build locally
+## 2. Build + Test locally
 ```bash
 cargo check
 cargo test
+cargo test --test bronze_tests
+cargo test --test silver_tests
+cargo test --test quality_tests
+cargo test --test api_tests
 
 ```
 
