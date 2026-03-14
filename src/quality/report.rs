@@ -1,15 +1,28 @@
 // src\quality\report.rs
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct QualityReport {
     pub passed: bool,
-    pub messages: Vec<String>,
+    pub row_count: usize,
+    pub errors: Vec<String>,
+    pub warnings: Vec<String>,
 }
 
-impl Default for QualityReport {
-    fn default() -> Self {
+impl QualityReport {
+    pub fn new(row_count: usize) -> Self {
         Self {
             passed: true,
-            messages: Vec::new(),
+            row_count,
+            errors: Vec::new(),
+            warnings: Vec::new(),
         }
+    }
+
+    pub fn push_error(&mut self, message: impl Into<String>) {
+        self.passed = false;
+        self.errors.push(message.into());
+    }
+
+    pub fn push_warning(&mut self, message: impl Into<String>) {
+        self.warnings.push(message.into());
     }
 }
