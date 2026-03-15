@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
+use tracing::{error, info, warn};
 
 use crate::core::errors::RsFoundryError;
 use crate::core::metadata::{SilverConformedRecord, SilverDailyRecord, SilverRefRecord};
@@ -27,6 +28,12 @@ pub fn run_silver_conformed_pipeline(
 ) -> Result<SilverConformedBuildResult, RsFoundryError> {
     let data_root = Path::new("./data");
 
+    info!(
+        ref_bronze_run_id = ref_bronze_run_id,
+        daily_bronze_run_id = daily_bronze_run_id,
+        "starting silver conformed pipeline"
+    );
+
     let ref_bronze_path = data_root
         .join("bronze")
         .join("ref_example")
@@ -44,6 +51,14 @@ pub fn run_silver_conformed_pipeline(
     let ref_bronze = read_bronze_ref_records(&ref_bronze_path)?;
     let daily_bronze = read_bronze_daily_records(&daily_bronze_path)?;
 
+    info!(
+        ref_bronze_run_id = ref_bronze_run_id,
+        daily_bronze_run_id = daily_bronze_run_id,
+        ref_bronze_count = ref_bronze.len(),
+        daily_bronze_count = daily_bronze.len(),
+        "read bronze inputs for conformed build"
+    );
+
     let silver_ref = crate::pipelines::silver::standardize_ref::dedupe_silver_ref_records(
         &crate::pipelines::silver::standardize_ref::build_silver_ref_records(&ref_bronze),
     );
@@ -54,8 +69,34 @@ pub fn run_silver_conformed_pipeline(
 
     let conformed = build_conformed_records(&silver_ref, &silver_daily, ref_bronze_run_id, daily_bronze_run_id);
 
+    info!(
+        ref_bronze_run_id = ref_bronze_run_id,
+        daily_bronze_run_id = daily_bronze_run_id,
+        silver_ref_count = silver_ref.len(),
+        silver_daily_count = silver_daily.len(),
+        conformed_count = conformed.len(),
+        "built conformed silver records"
+    );
+
+    if conformed.len() < silver_daily.len() {
+        warn!(
+            ref_bronze_run_id = ref_bronze_run_id,
+            daily_bronze_run_id = daily_bronze_run_id,
+            missing_join_count = silver_daily.len() - conformed.len(),
+            "some silver daily records did not match a silver ref record"
+        );
+    }
+
     let quality_report = validate_silver_conformed_records(&conformed);
     if !quality_report.passed {
+        error!(
+            ref_bronze_run_id = ref_bronze_run_id,
+            daily_bronze_run_id = daily_bronze_run_id,
+            error_count = quality_report.errors.len(),
+            errors = ?quality_report.errors,
+            "silver conformed contract checks failed"
+        );
+
         return Err(RsFoundryError::Validation(format!(
             "silver conformed contract checks failed: {}",
             quality_report.errors.join("; ")
@@ -64,6 +105,14 @@ pub fn run_silver_conformed_pipeline(
 
     let conformed_path = conformed_output_path(data_root, ref_bronze_run_id, daily_bronze_run_id);
     write_conformed_output(&conformed_path, &conformed)?;
+
+    info!(
+        ref_bronze_run_id = ref_bronze_run_id,
+        daily_bronze_run_id = daily_bronze_run_id,
+        conformed_path = %conformed_path.display(),
+        record_count = conformed.len(),
+        "wrote conformed silver output"
+    );
 
     Ok(SilverConformedBuildResult {
         ref_bronze_run_id: ref_bronze_run_id.to_string(),

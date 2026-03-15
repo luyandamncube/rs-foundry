@@ -2,6 +2,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
+use tracing::{error, info};
 
 use crate::core::errors::RsFoundryError;
 use crate::core::metadata::BronzeRefRecord;
@@ -25,7 +26,21 @@ pub fn run_bronze_ref_pipeline(run_id: RunId) -> Result<BronzeRefIngestResult, R
     let data_root = Path::new("./data");
     let source_name = "ref_example";
 
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        "starting bronze ref pipeline"
+    );
+
     let source_records = sample_ref_source_records();
+
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        source_record_count = source_records.len(),
+        "generated bronze ref source records"
+    );
+
     let raw_payload = serde_json::to_string_pretty(&source_records)
         .map_err(|e| RsFoundryError::Serialization(format!("failed to serialize raw payload: {e}")))?;
 
@@ -37,6 +52,14 @@ pub fn run_bronze_ref_pipeline(run_id: RunId) -> Result<BronzeRefIngestResult, R
         &raw_payload,
     )?;
 
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        raw_path = %raw_result.file_path.display(),
+        raw_bytes_written = raw_result.bytes_written,
+        "landed raw bronze ref payload"
+    );
+
     let bronze_records = build_bronze_ref_records(
         &source_records,
         &run_id,
@@ -45,15 +68,46 @@ pub fn run_bronze_ref_pipeline(run_id: RunId) -> Result<BronzeRefIngestResult, R
     );
 
     let quality_report = validate_bronze_ref_records(&bronze_records);
+
     if !quality_report.passed {
+        error!(
+            run_id = %run_id.0,
+            source_name = source_name,
+            error_count = quality_report.errors.len(),
+            errors = ?quality_report.errors,
+            "bronze ref quality checks failed"
+        );
+
         return Err(RsFoundryError::Validation(format!(
             "bronze ref quality checks failed: {}",
             quality_report.errors.join("; ")
         )));
     }
 
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        record_count = bronze_records.len(),
+        warning_count = quality_report.warnings.len(),
+        "bronze ref quality checks passed"
+    );
+
     let bronze_path = bronze_output_path(data_root, source_name, &run_id);
     write_bronze_ref_output(&bronze_path, &bronze_records)?;
+
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        bronze_path = %bronze_path.display(),
+        record_count = bronze_records.len(),
+        "wrote bronze ref output"
+    );
+
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        "completed bronze ref pipeline"
+    );
 
     Ok(BronzeRefIngestResult {
         run_id: run_id.0.to_string(),
@@ -143,4 +197,5 @@ pub fn write_bronze_ref_output(
 
     write_text(path, &payload)
 }
+
 

@@ -1,5 +1,12 @@
 // src\bin\silver_daily_build.rs
 fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+    .with_env_filter(
+        tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "info".into()),
+    )
+    .init();
+
     let bronze_run_id = std::env::args()
         .nth(1)
         .ok_or_else(|| anyhow::anyhow!("missing bronze_run_id argument"))?;

@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
+use tracing::{error, info};
 
 use crate::core::errors::RsFoundryError;
 use crate::core::metadata::{BronzeDailyRecord, SilverDailyRecord};
@@ -27,14 +28,44 @@ pub fn run_silver_daily_pipeline(
     let data_root = Path::new("./data");
     let source_name = "daily_example";
 
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        "starting silver daily pipeline"
+    );
+
     let bronze_path = bronze_input_path(data_root, source_name, bronze_run_id);
     let bronze_records = read_bronze_daily_records(&bronze_path)?;
+
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        bronze_path = %bronze_path.display(),
+        bronze_record_count = bronze_records.len(),
+        "read bronze daily input"
+    );
 
     let standardized_records = build_silver_daily_records(&bronze_records);
     let silver_records = dedupe_silver_daily_records(&standardized_records);
 
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        standardized_count = standardized_records.len(),
+        deduped_count = silver_records.len(),
+        "standardized and deduplicated silver daily records"
+    );
+
     let quality_report = validate_silver_daily_records(&silver_records);
     if !quality_report.passed {
+        error!(
+            bronze_run_id = bronze_run_id,
+            source_name = source_name,
+            error_count = quality_report.errors.len(),
+            errors = ?quality_report.errors,
+            "silver daily contract checks failed"
+        );
+
         return Err(RsFoundryError::Validation(format!(
             "silver daily contract checks failed: {}",
             quality_report.errors.join("; ")
@@ -43,6 +74,14 @@ pub fn run_silver_daily_pipeline(
 
     let silver_path = silver_output_path(data_root, source_name, bronze_run_id);
     write_silver_daily_output(&silver_path, &silver_records)?;
+
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        silver_path = %silver_path.display(),
+        record_count = silver_records.len(),
+        "wrote silver daily output"
+    );
 
     Ok(SilverDailyBuildResult {
         bronze_run_id: bronze_run_id.to_string(),

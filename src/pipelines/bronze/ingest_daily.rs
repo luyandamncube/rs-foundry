@@ -2,6 +2,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::{NaiveDate, Utc};
+use tracing::{error, info};
 
 use crate::core::errors::RsFoundryError;
 use crate::core::metadata::BronzeDailyRecord;
@@ -25,7 +26,21 @@ pub fn run_bronze_daily_pipeline(run_id: RunId) -> Result<BronzeDailyIngestResul
     let data_root = Path::new("./data");
     let source_name = "daily_example";
 
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        "starting bronze daily pipeline"
+    );
+
     let source_records = sample_daily_source_records();
+
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        source_record_count = source_records.len(),
+        "generated bronze daily source records"
+    );
+
     let raw_payload = serde_json::to_string_pretty(&source_records).map_err(|e| {
         RsFoundryError::Serialization(format!("failed to serialize daily raw payload: {e}"))
     })?;
@@ -38,6 +53,14 @@ pub fn run_bronze_daily_pipeline(run_id: RunId) -> Result<BronzeDailyIngestResul
         &raw_payload,
     )?;
 
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        raw_path = %raw_result.file_path.display(),
+        raw_bytes_written = raw_result.bytes_written,
+        "landed raw bronze daily payload"
+    );
+
     let bronze_records = build_bronze_daily_records(
         &source_records,
         &run_id,
@@ -47,14 +70,44 @@ pub fn run_bronze_daily_pipeline(run_id: RunId) -> Result<BronzeDailyIngestResul
 
     let quality_report = validate_bronze_daily_records(&bronze_records);
     if !quality_report.passed {
+        error!(
+            run_id = %run_id.0,
+            source_name = source_name,
+            error_count = quality_report.errors.len(),
+            errors = ?quality_report.errors,
+            "bronze daily quality checks failed"
+        );
+
         return Err(RsFoundryError::Validation(format!(
             "bronze daily quality checks failed: {}",
             quality_report.errors.join("; ")
         )));
     }
 
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        record_count = bronze_records.len(),
+        warning_count = quality_report.warnings.len(),
+        "bronze daily quality checks passed"
+    );
+
     let bronze_path = bronze_output_path(data_root, source_name, &run_id);
     write_bronze_daily_output(&bronze_path, &bronze_records)?;
+
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        bronze_path = %bronze_path.display(),
+        record_count = bronze_records.len(),
+        "wrote bronze daily output"
+    );
+
+    info!(
+        run_id = %run_id.0,
+        source_name = source_name,
+        "completed bronze daily pipeline"
+    );
 
     Ok(BronzeDailyIngestResult {
         run_id: run_id.0.to_string(),
@@ -149,4 +202,3 @@ pub fn write_bronze_daily_output(
 
     write_text(path, &payload)
 }
-

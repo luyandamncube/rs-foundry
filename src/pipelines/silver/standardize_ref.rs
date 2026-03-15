@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
+use tracing::{error, info};
 
 use crate::core::errors::RsFoundryError;
 use crate::core::metadata::{BronzeRefRecord, SilverRefRecord};
@@ -25,14 +26,44 @@ pub fn run_silver_ref_pipeline(bronze_run_id: &str) -> Result<SilverRefBuildResu
     let data_root = Path::new("./data");
     let source_name = "ref_example";
 
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        "starting silver ref pipeline"
+    );
+
     let bronze_path = bronze_input_path(data_root, source_name, bronze_run_id);
     let bronze_records = read_bronze_ref_records(&bronze_path)?;
+
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        bronze_path = %bronze_path.display(),
+        bronze_record_count = bronze_records.len(),
+        "read bronze ref input"
+    );
 
     let standardized_records = build_silver_ref_records(&bronze_records);
     let silver_records = dedupe_silver_ref_records(&standardized_records);
 
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        standardized_count = standardized_records.len(),
+        deduped_count = silver_records.len(),
+        "standardized and deduplicated silver ref records"
+    );
+
     let quality_report = validate_silver_ref_records(&silver_records);
     if !quality_report.passed {
+        error!(
+            bronze_run_id = bronze_run_id,
+            source_name = source_name,
+            error_count = quality_report.errors.len(),
+            errors = ?quality_report.errors,
+            "silver ref contract checks failed"
+        );
+
         return Err(RsFoundryError::Validation(format!(
             "silver ref contract checks failed: {}",
             quality_report.errors.join("; ")
@@ -41,6 +72,14 @@ pub fn run_silver_ref_pipeline(bronze_run_id: &str) -> Result<SilverRefBuildResu
 
     let silver_path = silver_output_path(data_root, source_name, bronze_run_id);
     write_silver_ref_output(&silver_path, &silver_records)?;
+
+    info!(
+        bronze_run_id = bronze_run_id,
+        source_name = source_name,
+        silver_path = %silver_path.display(),
+        record_count = silver_records.len(),
+        "wrote silver ref output"
+    );
 
     Ok(SilverRefBuildResult {
         bronze_run_id: bronze_run_id.to_string(),
