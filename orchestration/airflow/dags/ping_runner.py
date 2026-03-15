@@ -1,3 +1,4 @@
+# orchestration\airflow\dags\ping_runner.py
 from __future__ import annotations
 
 import os
@@ -5,7 +6,7 @@ from datetime import datetime
 
 import requests
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 
 
 def ping_runner() -> None:

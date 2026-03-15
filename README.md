@@ -1,5 +1,3 @@
-# README.md
-
 # rs-foundry
 
 `rs-foundry` is a Rust-first data platform MVP.
@@ -8,8 +6,9 @@ It is designed around a simple rule:
 
 - **Rust owns the runtime**
 - **notebooks support design-time exploration only**
+- **Airflow orchestrates, Rust executes**
 
-The platform is intended to provide a clean, production-minded foundation for:
+The platform provides a clean, production-minded foundation for:
 
 - ingestion
 - schema mapping
@@ -19,14 +18,18 @@ The platform is intended to provide a clean, production-minded foundation for:
 - layered data writes
 - run tracking
 - API-driven execution
-- future worker-based orchestration
+- Airflow-driven orchestration
+- OpenAPI-based API exploration
+- future worker-based async execution
 
 ---
 
 ## Core principles
 
 - Rust owns the data plane
-- Rust owns the control plane
+- Rust owns the execution logic
+- Rust owns the runner API and run registry
+- Airflow owns orchestration only
 - notebooks are for exploration, validation, and prototyping only
 - notebooks are not part of the production execution path
 - the platform supports layered outputs:
@@ -48,8 +51,9 @@ It handles:
 - job request intake
 - request validation
 - run creation
-- dispatch decisions
+- direct execution dispatch
 - run status exposure
+- API documentation
 - future async orchestration
 
 Primary modules:
@@ -89,7 +93,40 @@ Primary entry points:
 - `src/bin/bronze_ref_ingest.rs`
 - `src/bin/bronze_daily_ingest.rs`
 - `src/bin/silver_ref_build.rs`
+- `src/bin/silver_daily_build.rs`
 - `src/bin/silver_conformed_build.rs`
+
+---
+
+## Orchestration layer
+
+Airflow is now integrated as the external orchestration layer.
+
+The orchestration rule is:
+
+- **Airflow orchestrates**
+- **Rust executes**
+
+Airflow owns:
+
+- DAG scheduling
+- dependency ordering
+- trigger/wait orchestration
+- orchestration visibility
+- future retries and backfills
+
+Rust owns:
+
+- ingestion
+- transformations
+- metadata enrichment
+- quality checks
+- layered writes
+- run creation
+- run status updates
+- lineage-aware execution semantics
+
+Airflow DAGs remain intentionally thin and call the Rust runner API instead of embedding business logic in Python.
 
 ---
 
@@ -134,7 +171,7 @@ Location:
 ## Silver
 
 Purpose:
-- cleaned, typed, deduplicated, conformed datasets
+- cleaned, typed, deduplicated, standardized, and conformed datasets
 - stronger quality guarantees
 - downstream-ready foundations
 
@@ -151,19 +188,65 @@ Location:
 
 ---
 
-## Current Phase 1 foundation scope
+## Current MVP status
 
-Phase 1 establishes:
+The current project now includes:
 
-- repo scaffold
-- Rust module boundaries
-- environment-aware config
-- local Docker Compose stack
-- Postgres service
-- optional notebook sidecar
-- architecture docs
+- Rust runner API
+- Postgres-backed run registry
+- bronze ref job execution
+- bronze daily job execution
+- silver ref job execution
+- silver daily job execution
+- silver conformed job execution
+- Airflow local orchestration stack
+- working trigger/wait DAGs
+- OpenAPI generation with Swagger UI
 
-Phase 1 does **not** yet focus on full ingestion behavior or worker orchestration.
+### Working orchestration flows
+
+The following flows are working locally:
+
+- `ping_runner_dag`
+- `bronze_ref_ingest_dag`
+- `bronze_daily_ingest_dag`
+- `silver_ref_build_dag`
+- `silver_daily_build_dag`
+- `silver_conformed_pipeline_dag`
+
+These prove:
+
+- Airflow can trigger Rust jobs through the runner API
+- Airflow can poll the Rust run registry
+- Airflow can pass upstream run IDs between steps
+- Rust remains the source of truth for execution and run state
+
+---
+
+## OpenAPI / Swagger UI
+
+The runner API is documented with `utoipa` and exposed through Swagger UI.
+
+### Endpoints
+
+- OpenAPI JSON:
+  - `/api-docs/openapi.json`
+- Swagger UI:
+  - `/swagger-ui/`
+
+### Current documented API surface
+
+- `GET /health`
+- `GET /ready`
+- `POST /jobs/bronze/ref`
+- `POST /jobs/bronze/daily`
+- `POST /jobs/silver/ref`
+- `POST /jobs/silver/daily`
+- `POST /jobs/silver/conformed`
+- `GET /runs`
+- `GET /runs/{id}`
+
+This allows local interactive exploration of the runner API without needing to manually inspect all handlers and models.
 
 ---
 
@@ -175,15 +258,20 @@ rs-foundry/
 ├── Cargo.lock
 ├── rust-toolchain.toml
 ├── docker-compose.yml
-├── .env
-├── .env.example
 ├── README.md
 ├── DIRTREE.md
-├── docker/
 ├── conf/
 ├── data/
+├── docker/
 ├── docs/
 ├── notebooks/
+├── orchestration/
+│   └── airflow/
+│       ├── dags/
+│       ├── plugins/
+│       ├── env/
+│       ├── config/
+│       └── logs/
 ├── src/
 │   ├── api/
 │   ├── config/
@@ -213,58 +301,132 @@ The project uses a Rust toolchain override through `rust-toolchain.toml`.
 
 ## 1. Check toolchain
 
-```bash
-rustc --version
-cargo --version
-cargo check
-cargo test
 ```
-## 2. Build + Test locally
-```bash
+rustc--version
+cargo--version
 cargo check
-cargo test
-cargo test --test bronze_tests
-cargo test --test silver_tests
-cargo test --test quality_tests
-cargo test --test api_tests
-
 ```
 
-## 3. Run API Runner Locally
-```bash
-cargo run --bin runner_api
+## 2. Build + test locally
 
-# check health
+```
+cargo check
+cargo test
+cargo test--test bronze_tests
+cargo test--test silver_tests
+cargo test--test quality_tests
+cargo test--test api_tests
+```
+
+## 3. Run the runner API locally
+
+```
+cargo run--bin runner_api
+```
+
+Health check:
+
+```
 curl http://localhost:8080/health
-
-# expected response
-{"status":"ok","service":"rs-foundry"}
-
 ```
 
-Docker Compose usage
+Expected response shape:
+
+```
+{"status":"ok","service":"rs-foundry","environment":"base"}
+```
+
+---
+
+## Docker Compose usage
+
 ## 4. Start the local stack
-```bash
-docker compose up --build
+
+```
+docker compose up--build
 ```
 
-This starts:
+This starts the core stack:
+
 - postgres
 - runner
 
 Optional profile-based services:
+
 - worker
 - notebook
+- airflow
 
-Start notebook profile
-```bash
-docker compose --profile notebook up --build notebook
+### Start notebook profile
+
 ```
-Start worker profile
-```bash
-docker compose --profile worker up --build worker
+docker compose--profile notebook up--build notebook
 ```
 
+### Start worker profile
+
+```
+docker compose--profile worker up--build worker
+```
+
+### Start Airflow profile
+
+```
+docker compose--profile airflow up--build
+```
+
+This starts:
+
+- `airflow-init`
+- `airflow-webserver`
+- `airflow-scheduler`
+- `airflow-triggerer`
+- `airflow-dag-processor`
+
+### Airflow UI
+
+Open:
+
+```
+http://localhost:8081
+```
+
+### Swagger UI
+
+Open:
+
+```
+http://localhost:8080/swagger-ui/
+```
+
+---
+
+## Airflow local notes
+
+The Airflow stack is configured for Docker-first local development.
+
+Current local setup includes:
+
+- `LocalExecutor`
+- local mounted DAGs and plugins
+- runner API access over Docker service networking
+- internal Airflow API / execution auth configuration
+- local admin-style access for dev-only use
+
+Airflow DAGs call the Rust runner API using the shared helper client in:
+
+- `orchestration/airflow/plugins/rs_foundry_client.py`
+
+The initial DAG pattern is:
+
+- trigger Rust job
+- capture returned `run_id`
+- poll `GET /runs/{id}`
+- succeed/fail based on Rust run status
+
+This pattern is now used across bronze and silver orchestration flows.
+
+---
 
 ## Configuration
 
@@ -274,7 +436,7 @@ Configuration is loaded in this order:
 
 1. `conf/base/app.toml`
 2. `conf/<APP_ENV>/app.toml`
-3. environment variables from `.env` or the shell
+3. environment variables from the shell / container environment
 
 This means:
 
@@ -291,13 +453,13 @@ This means:
 ### Current config files
 
 - `app.toml` — core app/runtime settings
-- `sources.toml` — source definitions for future ingestion work
-- `sinks.toml` — sink/output definitions for future write targets
-- `quality.toml` — quality-rule defaults for future pipeline checks
+- `sources.toml` — source definitions
+- `sinks.toml` — sink/output definitions
+- `quality.toml` — quality-rule defaults
 
 ### Current runtime settings
 
-The current Phase 1 setup focuses mainly on application and local infrastructure settings, including:
+The current setup focuses mainly on:
 
 - application name
 - host and port
@@ -320,42 +482,17 @@ The current Phase 1 setup focuses mainly on application and local infrastructure
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 
-### Example flow
+For Airflow local orchestration:
 
-If `APP_ENV=dev`, configuration is resolved roughly as:
+- `RS_FOUNDRY_RUNNER_BASE_URL`
+- `RS_FOUNDRY_POLL_INTERVAL_SECONDS`
+- `RS_FOUNDRY_RUN_TIMEOUT_SECONDS`
 
-- load defaults from `conf/base/app.toml`
-- apply overrides from `conf/dev/app.toml`
-- apply any matching environment-variable overrides
-
-### Why this approach
-
-This model keeps configuration:
-
-- centralized
-- easy to reason about
-- environment-specific without duplicating everything
-- safer than scattering hardcoded values across the codebase
-
-### Rule of thumb
-
-- put stable shared defaults in `conf/base/`
-- put environment-specific overrides in `conf/dev/` or `conf/prod/`
-- use environment variables for deployment/runtime overrides
-- do not hardcode runtime paths, ports, or connection settings in Rust modules
+---
 
 ## Data directories
 
 `rs-foundry` uses an explicit layered local data layout under `data/` so each stage of data maturity is visible and predictable.
-
-### Root data path
-
-The root data path is controlled through configuration, typically via:
-
-- `DATA_ROOT`
-- path helpers in `src/config/paths.rs`
-
-This ensures storage locations are centralized rather than hardcoded throughout the codebase.
 
 ### Directory layout
 
@@ -366,88 +503,9 @@ This ensures storage locations are centralized rather than hardcoded throughout 
 - `data/checkpoints/`
 - `data/runs/`
 
-### `data/raw/`
-
-Purpose:
-
-- preserve source fidelity
-- store landed source payloads before meaningful transformation
-- support replay, debugging, and traceability
-
-Typical contents:
-
-- raw files from sources
-- source-shaped payload captures
-- minimally altered landed inputs
-
-### `data/bronze/`
-
-Purpose:
-
-- store minimally standardized datasets
-- attach ingestion metadata
-- preserve close alignment to source structure
-
-Typical contents:
-
-- parsed source outputs
-- parquet datasets with metadata such as run ID, source name, and ingest timestamp
-- first-stage validated data
-
-### `data/silver/`
-
-Purpose:
-
-- store cleaned, typed, deduplicated, and conformed datasets
-- provide stronger guarantees for downstream use
-
-Typical contents:
-
-- standardized datasets
-- cleaned and normalized outputs
-- conformed datasets built from multiple bronze inputs
-
-### `data/gold/`
-
-Purpose:
-
-- store consumer-facing datasets for analytics, reporting, or feature-oriented downstream use
-
-Typical contents:
-
-- curated outputs
-- aggregates
-- feature-ready or analysis-ready datasets
-
-### `data/checkpoints/`
-
-Purpose:
-
-- support future pipeline checkpointing and resumability
-- hold intermediate execution state where needed
-
-Typical contents:
-
-- checkpoint markers
-- pipeline progress artifacts
-- future state-tracking files for incremental jobs
-
-### `data/runs/`
-
-Purpose:
-
-- support local run-oriented artifacts outside the database-backed run registry
-- keep run-specific output or diagnostic files grouped by execution
-
-Typical contents:
-
-- local run logs
-- temporary execution artifacts
-- future run manifests or exported diagnostics
-
 ### Why this layout exists
 
-This structure makes the platform easier to reason about because it separates:
+This structure separates:
 
 - source fidelity
 - early-stage operational datasets
@@ -468,6 +526,30 @@ It also aligns the on-disk layout with the architectural model of the platform.
 
 All code should use centralized path helpers instead of manually constructing layer paths in multiple places.
 
+---
+
+## Current runner API flow
+
+The runner API currently supports direct synchronous job execution.
+
+Typical flow:
+
+1. client submits a job request
+2. runner creates a `run_id`
+3. runner updates run status to `running`
+4. Rust job executes
+5. run registry is updated to `succeeded` or `failed`
+6. client can inspect status through `/runs` or `/runs/{id}`
+
+Airflow builds on top of this by:
+
+1. triggering the runner API
+2. capturing the returned `run_id`
+3. polling the run registry endpoint
+4. propagating upstream run IDs into downstream Rust jobs
+
+---
+
 ## Phase roadmap
 
 `rs-foundry` is built in practical phases so the team can establish clean foundations first, then add ingestion, orchestration, and downstream-ready outputs in a controlled way.
@@ -483,28 +565,16 @@ Focus:
 - notebook sidecar
 - baseline docs
 
-Outcome:
-
-- a compiling Rust workspace
-- a runnable local development stack
-- clear separation between control plane, data plane, and notebook sidecar
-
 ### Phase 2 — Bronze ingestion MVP
 
 Focus:
 
 - raw landing
 - bronze reference ingestion
-- bronze daily or event-style ingestion
+- bronze daily ingestion
 - metadata enrichment
 - initial schema validation
 - basic quality checks
-
-Outcome:
-
-- one or two realistic ingestion paths
-- raw and bronze outputs written to the layered local storage layout
-- CLI-driven execution paths for ingestion jobs
 
 ### Phase 3 — Rust control plane MVP
 
@@ -517,12 +587,6 @@ Focus:
 - run status visibility
 - API tests
 
-Outcome:
-
-- a usable control-plane entry point
-- direct execution of bronze jobs through the runner API
-- persistent run tracking foundation
-
 ### Phase 4 — Silver standardization MVP
 
 Focus:
@@ -533,14 +597,9 @@ Focus:
 - contract checks
 - conformed silver dataset build
 
-Outcome:
-
-- stronger, downstream-ready silver datasets
-- a clear bridge between ingestion and analytics or DS/ML use
-
 ### Phase 5 — Async orchestration and worker path
 
-Focus:
+Original focus:
 
 - queue abstraction
 - worker service
@@ -548,11 +607,11 @@ Focus:
 - queued dispatch
 - worker/orchestration tests
 
-Outcome:
+Current note:
 
-- separation of job submission and execution
-- optional async execution path for longer-running jobs
-- improved extensibility for future scaling
+- Airflow has now been introduced as the external orchestration layer for local development
+- Rust still owns execution
+- future worker-based async execution remains a separate next-step concern
 
 ### Phase 6 — Observability, polish, and DS handoff
 
@@ -563,12 +622,7 @@ Focus:
 - data contract documentation
 - curated notebooks for profiling and validation
 - downstream-facing handoff outputs
-
-Outcome:
-
-- a more operationally usable MVP
-- better visibility into runs and failures
-- clearer handoff into future DS/ML workflows
+- improved orchestration traceability
 
 ### Why this sequence
 
@@ -578,7 +632,7 @@ The phases are ordered to avoid premature complexity:
 - then ingestion
 - then control-plane execution
 - then stronger data quality and conformance
-- then async orchestration
+- then orchestration maturation
 - then polish and handoff
 
 This keeps the MVP grounded in a stable architecture before introducing more complex runtime behavior.

@@ -1,0 +1,44 @@
+[
+  {
+    "event_id": "E001",
+    "ref_id": "R001",
+    "event_date": "2026-03-14",
+    "metric_value": 10.5,
+    "status": "ok",
+    "source_ts": null,
+    "run_id": "9f840d0b-db0c-4c3e-a8c2-e666ab9f65b1",
+    "source_name": "daily_example",
+    "source_file": "daily_source.json",
+    "ingested_at": "2026-03-15T21:38:31.633024149Z",
+    "load_date": "2026-03-15",
+    "record_hash": null
+  },
+  {
+    "event_id": "E002",
+    "ref_id": "R002",
+    "event_date": "2026-03-14",
+    "metric_value": 25.0,
+    "status": "warning",
+    "source_ts": null,
+    "run_id": "9f840d0b-db0c-4c3e-a8c2-e666ab9f65b1",
+    "source_name": "daily_example",
+    "source_file": "daily_source.json",
+    "ingested_at": "2026-03-15T21:38:31.633024149Z",
+    "load_date": "2026-03-15",
+    "record_hash": null
+  },
+  {
+    "event_id": "E003",
+    "ref_id": "R003",
+    "event_date": "2026-03-14",
+    "metric_value": 0.0,
+    "status": "inactive",
+    "source_ts": null,
+    "run_id": "9f840d0b-db0c-4c3e-a8c2-e666ab9f65b1",
+    "source_name": "daily_example",
+    "source_file": "daily_source.json",
+    "ingested_at": "2026-03-15T21:38:31.633024149Z",
+    "load_date": "2026-03-15",
+    "record_hash": null
+  }
+]
