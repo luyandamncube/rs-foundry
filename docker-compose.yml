@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     container_name: rs-foundry-postgres
     environment:
-      POSTGRES_DB: rs_foundry
+      POSTGRES_DB: postgres
       POSTGRES_USER: rs_foundry
       POSTGRES_PASSWORD: rs_foundry
     ports:
@@ -14,7 +14,7 @@ services:
       - rs_foundry_postgres_data:/var/lib/postgresql/data
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rs_foundry -d rs_foundry"]
+      test: ["CMD-SHELL", "pg_isready -U rs_foundry -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -24,14 +24,11 @@ services:
       context: .
       dockerfile: docker/runner.Dockerfile
     container_name: rs-foundry-runner
-    env_file:
-      - .env
     environment:
       APP_ENV: dev
       APP_HOST: 0.0.0.0
       APP_PORT: 8080
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      DATABASE_URL: postgres://rs_foundry:rs_foundry@postgres:5432/rs_foundry
       DATA_ROOT: /app/data
       CONF_ROOT: /app/conf
     ports:
@@ -43,18 +40,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
   worker:
     build:
       context: .
       dockerfile: docker/worker.Dockerfile
     container_name: rs-foundry-worker
-    env_file:
-      - .env
     environment:
       APP_ENV: dev
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      DATABASE_URL: postgres://rs_foundry:rs_foundry@postgres:5432/rs_foundry
       DATA_ROOT: /app/data
       CONF_ROOT: /app/conf
     volumes:
@@ -65,7 +58,6 @@ services:
         condition: service_healthy
     profiles:
       - worker
-
   notebook:
     build:
       context: .
@@ -80,5 +72,128 @@ services:
     profiles:
       - notebook
 
+  airflow-init:
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
+    container_name: rs-foundry-airflow-init
+    env_file:
+      - ./orchestration/airflow/env/airflow.env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://rs_foundry:rs_foundry@postgres:5432/airflow
+      RS_FOUNDRY_RUNNER_BASE_URL: http://runner:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+    volumes:
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/config:/opt/airflow/config
+    profiles:
+      - airflow
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
+    container_name: rs-foundry-airflow-webserver
+    env_file:
+      - ./orchestration/airflow/env/airflow.env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://rs_foundry:rs_foundry@postgres:5432/airflow
+      RS_FOUNDRY_RUNNER_BASE_URL: http://runner:8080
+    command: api-server
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/config:/opt/airflow/config
+    profiles:
+      - airflow
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
+    container_name: rs-foundry-airflow-scheduler
+    env_file:
+      - ./orchestration/airflow/env/airflow.env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://rs_foundry:rs_foundry@postgres:5432/airflow
+      RS_FOUNDRY_RUNNER_BASE_URL: http://runner:8080
+    command: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      runner:
+        condition: service_started
+    volumes:
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/config:/opt/airflow/config
+    profiles:
+      - airflow
+
+  airflow-triggerer:
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
+    container_name: rs-foundry-airflow-triggerer
+    env_file:
+      - ./orchestration/airflow/env/airflow.env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://rs_foundry:rs_foundry@postgres:5432/airflow
+      RS_FOUNDRY_RUNNER_BASE_URL: http://runner:8080
+    command: triggerer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/config:/opt/airflow/config
+    profiles:
+      - airflow
+
+  airflow-dag-processor:
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
+    container_name: rs-foundry-airflow-dag-processor
+    env_file:
+      - ./orchestration/airflow/env/airflow.env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://rs_foundry:rs_foundry@postgres:5432/airflow
+      RS_FOUNDRY_RUNNER_BASE_URL: http://runner:8080
+    command: dag-processor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./orchestration/airflow/dags:/opt/airflow/dags
+      - ./orchestration/airflow/plugins:/opt/airflow/plugins
+      - ./orchestration/airflow/logs:/opt/airflow/logs
+      - ./orchestration/airflow/config:/opt/airflow/config
+    profiles:
+      - airflow
 volumes:
   rs_foundry_postgres_data:

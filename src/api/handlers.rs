@@ -1,4 +1,4 @@
-// src\api\handlers.rs
+// src/api/handlers.rs
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -147,11 +147,9 @@ pub async fn list_runs(
         .await
         .map_err(internal_error)?;
 
-    let response = RunListResponse {
+    Ok(Json(RunListResponse {
         runs: runs.into_iter().map(to_run_response).collect(),
-    };
-
-    Ok(Json(response))
+    }))
 }
 
 fn to_run_response(run: crate::core::types::RunRecord) -> RunResponse {

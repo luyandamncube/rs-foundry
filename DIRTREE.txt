@@ -1,112 +1,125 @@
 rs-foundry/
 ├── Cargo.toml
-├── Cargo.lock
-├── rust-toolchain.toml
-├── docker-compose.yml
-├── .env
-├── .env.example
-├── README.md
 ├── DIRTREE.md
+├── DIRTREE.txt
 ├── Makefile
-├── docker/
-│   ├── notebook.Dockerfile
-│   ├── runner.Dockerfile
-│   ├── worker.Dockerfile
-│   └── postgres-init/
-│       └── 001_init.sql
-├── conf/
-│   ├── base/
-│   │   ├── app.toml
-│   │   ├── sources.toml
-│   │   ├── sinks.toml
-│   │   └── quality.toml
-│   ├── dev/
-│   │   └── app.toml
-│   └── prod/
-│       └── app.toml
-├── data/
-│   ├── raw/
-│   ├── bronze/
-│   ├── silver/
-│   ├── gold/
-│   ├── checkpoints/
-│   └── runs/
-├── docs/
-│   ├── architecture.md
-│   ├── contracts/
-│   │   ├── bronze.md
-│   │   ├── silver.md
-│   │   └── gold.md
-│   └── phases/
-│       ├── PHASE_1_FOUNDATION.md
-│       ├── PHASE_2_BRONZE.md
-│       ├── PHASE_3_CONTROL_PLANE.md
-│       ├── PHASE_4_SILVER.md
-│       ├── PHASE_5_ASYNC.md
-│       └── PHASE_6_POLISH.md
-├── notebooks/
-│   ├── 00_setup.rsnb
-│   ├── bronze/
-│   ├── silver/
-│   └── gold/
-├── src/
-│   ├── lib.rs
-│   ├── core/
-│   │   ├── mod.rs
-│   │   ├── errors.rs
-│   │   ├── schemas.rs
-│   │   ├── types.rs
-│   │   └── metadata.rs
-│   ├── config/
-│   │   ├── mod.rs
-│   │   ├── paths.rs
-│   │   └── settings.rs
-│   ├── io/
-│   │   ├── mod.rs
-│   │   ├── files.rs
-│   │   ├── http.rs
-│   │   ├── parquet.rs
-│   │   ├── postgres.rs
-│   │   └── object_store.rs
-│   ├── quality/
-│   │   ├── mod.rs
-│   │   ├── checks.rs
-│   │   ├── contracts.rs
-│   │   └── report.rs
-│   ├── pipelines/
-│   │   ├── mod.rs
-│   │   ├── bronze/
-│   │   ├── silver/
-│   │   └── gold/
-│   ├── jobs/
-│   │   ├── mod.rs
-│   │   ├── bronze_ref_job.rs
-│   │   ├── bronze_daily_job.rs
-│   │   ├── silver_ref_job.rs
-│   │   └── silver_conformed_job.rs
-│   ├── orchestration/
-│   │   ├── mod.rs
-│   │   ├── run_registry.rs
-│   │   ├── queue.rs
-│   │   ├── scheduler.rs
-│   │   └── dispatcher.rs
-│   └── api/
-│       ├── mod.rs
-│       ├── handlers.rs
-│       ├── routes.rs
-│       ├── models.rs
-│       └── state.rs
-├── src/bin/
-│   ├── runner_api.rs
-│   ├── worker.rs
-│   ├── bronze_ref_ingest.rs
-│   ├── bronze_daily_ingest.rs
-│   ├── silver_ref_build.rs
-│   └── silver_conformed_build.rs
-└── tests/
-    ├── config_tests.rs
-    ├── bronze_tests.rs
-    ├── silver_tests.rs
-    ├── quality_tests.rs
+├── README.md
+├── conf
+│   ├── base
+│   │   ├── app.toml
+│   │   ├── quality.toml
+│   │   ├── sinks.toml
+│   │   └── sources.toml
+│   ├── dev
+│   │   └── app.toml
+│   └── prod
+│       └── app.toml
+├── data
+│   ├── bronze
+│   ├── checkpoints
+│   ├── gold
+│   ├── raw
+│   ├── runs
+│   └── silver
+├── docker
+│   ├── notebook.Dockerfile
+│   ├── postgres-init
+│   │   └── 001_init.sql
+│   ├── runner.Dockerfile
+│   └── worker.Dockerfile
+├── docker-compose.yml
+├── docs
+│   ├── architecture.md
+│   ├── contracts
+│   │   ├── bronze.md
+│   │   ├── gold.md
+│   │   └── silver.md
+│   ├── handoff.md
+│   ├── phases
+│   │   ├── PHASE_1_FOUNDATION.md
+│   │   ├── PHASE_2_BRONZE.md
+│   │   ├── PHASE_3_CONTROL_PLANE.md
+│   │   ├── PHASE_4_SILVER.md
+│   │   ├── PHASE_5_ASYNC.md
+│   │   └── PHASE_6_POLISH.md
+│   └── workflow.md
+├── notebooks
+│   └── bronze
+│       ├── 00_source_profile_00_test.ipynb
+│       ├── 00_source_profile_01_comments.ipynb
+│       └── 00_test_rust_kernel.ipynb
+├── rust-toolchain.toml
+├── scaffhold_from_tree.py
+├── src
+│   ├── api
+│   │   ├── handlers.rs
+│   │   ├── mod.rs
+│   │   ├── models.rs
+│   │   ├── routes.rs
+│   │   └── state.rs
+│   ├── bin
+│   │   ├── bronze_daily_ingest.rs
+│   │   ├── bronze_ref_ingest.rs
+│   │   ├── runner_api.rs
+│   │   ├── silver_conformed_build.rs
+│   │   ├── silver_daily_build.rs
+│   │   ├── silver_ref_build.rs
+│   │   └── worker.rs
+│   ├── config
+│   │   ├── mod.rs
+│   │   ├── paths.rs
+│   │   └── settings.rs
+│   ├── core
+│   │   ├── errors.rs
+│   │   ├── metadata.rs
+│   │   ├── mod.rs
+│   │   ├── schemas.rs
+│   │   └── types.rs
+│   ├── io
+│   │   ├── files.rs
+│   │   ├── http.rs
+│   │   ├── mod.rs
+│   │   ├── object_store.rs
+│   │   ├── parquet.rs
+│   │   └── postgres.rs
+│   ├── jobs
+│   │   ├── bronze_daily_job.rs
+│   │   ├── bronze_ref_job.rs
+│   │   ├── mod.rs
+│   │   ├── raw_landing.rs
+│   │   ├── silver_conformed_job.rs
+│   │   ├── silver_daily_job.rs
+│   │   └── silver_ref_job.rs
+│   ├── lib.rs
+│   ├── orchestration
+│   │   ├── dispatcher.rs
+│   │   ├── mod.rs
+│   │   ├── queue.rs
+│   │   ├── run_registry.rs
+│   │   └── scheduler.rs
+│   ├── pipelines
+│   │   ├── bronze
+│   │   │   ├── ingest_daily.rs
+│   │   │   ├── ingest_ref.rs
+│   │   │   └── mod.rs
+│   │   ├── gold
+│   │   │   ├── build_features.rs
+│   │   │   └── mod.rs
+│   │   ├── mod.rs
+│   │   └── silver
+│   │       ├── build_conformed.rs
+│   │       ├── mod.rs
+│   │       ├── standardize_daily.rs
+│   │       └── standardize_ref.rs
+│   └── quality
+│       ├── checks.rs
+│       ├── contracts.rs
+│       ├── mod.rs
+│       └── report.rs
+└── tests
     ├── api_tests.rs
-    └── orchestration_tests.rs
+    ├── bronze_tests.rs
+    ├── config_tests.rs
+    ├── orchestration_tests.rs
+    ├── quality_tests.rs
+    └── silver_tests.rs
