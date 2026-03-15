@@ -1,0 +1,21 @@
+# Rust
+target/
+
+# Env files
+.env
+.env.*
+
+# Airflow local runtime artifacts
+orchestration/airflow/logs/*
+!orchestration/airflow/logs/.gitkeep
+
+# Airflow local env overrides / secrets
+orchestration/airflow/env/*.local
+orchestration/airflow/env/.env
+orchestration/airflow/env/.env.*
+
+# Python cache from Airflow DAGs / plugins
+orchestration/airflow/dags/__pycache__/
+orchestration/airflow/plugins/__pycache__/
+orchestration/airflow/config/__pycache__/
+*.pyc
