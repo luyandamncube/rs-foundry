@@ -1,5 +1,3 @@
-# docs/workflow.md
-
 # Workflow
 
 ## Step 1 — Create the notebook first
