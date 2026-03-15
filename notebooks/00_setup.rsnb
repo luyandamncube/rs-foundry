@@ -1,8 +1,0 @@
-# rs-foundry notebook setup
-
-This notebook is for design-time exploration only.
-
-Goals:
-- validate Rust notebook environment
-- inspect local files under /workspace
-- prototype logic that will later move into src/
