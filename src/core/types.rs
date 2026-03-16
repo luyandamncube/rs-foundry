@@ -1,4 +1,4 @@
-// src\core\types.rs
+// src/core/types.rs
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -27,6 +27,15 @@ pub enum RunStatus {
     Failed,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RunOrchestrationMetadata {
+    pub orchestrator: Option<String>,
+    pub orchestrator_dag_id: Option<String>,
+    pub orchestrator_dag_run_id: Option<String>,
+    pub orchestrator_task_id: Option<String>,
+    pub orchestrator_try_number: Option<i32>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunRecord {
     pub run_id: RunId,
@@ -35,6 +44,8 @@ pub struct RunRecord {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub error_message: Option<String>,
+    pub orchestration: RunOrchestrationMetadata,
+    pub upstream_run_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

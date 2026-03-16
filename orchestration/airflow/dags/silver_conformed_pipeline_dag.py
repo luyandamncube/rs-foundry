@@ -1,3 +1,4 @@
+# orchestration/airflow/dags/silver_conformed_pipeline_dag.py
 from __future__ import annotations
 
 import os
@@ -9,6 +10,18 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 
 from rs_foundry_client import RsFoundryClient, RsFoundryClientError
+
+
+def build_orchestration_context(context: dict[str, Any]) -> dict[str, Any]:
+    ti = context["ti"]
+
+    return {
+        "orchestrator": "airflow",
+        "dag_id": context["dag"].dag_id,
+        "dag_run_id": context["run_id"],
+        "task_id": context["task"].task_id,
+        "try_number": ti.try_number,
+    }
 
 
 def wait_for_run(task_id_to_pull: str, **context) -> dict[str, Any]:
@@ -52,15 +65,10 @@ def wait_for_run(task_id_to_pull: str, **context) -> dict[str, Any]:
 def trigger_bronze_ref(**context) -> str:
     client = RsFoundryClient.from_env()
 
-    payload = {
-        "triggered_by": "airflow",
-        "dag_id": context["dag"].dag_id,
-        "dag_run_id": context["run_id"],
-        "task_id": context["task"].task_id,
-        "logical_date": context["logical_date"].isoformat(),
-    }
-
-    result = client.trigger_bronze_ref(payload)
+    result = client.trigger_bronze_ref(
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     run_id = result["run_id"]
 
     print(f"bronze_ref trigger response: {result}")
@@ -84,7 +92,11 @@ def trigger_silver_ref(**context) -> str:
 
     bronze_run_id = bronze_run["run_id"]
 
-    result = client.trigger_silver_ref(bronze_run_id)
+    result = client.trigger_silver_ref(
+        bronze_run_id,
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     silver_run_id = result["run_id"]
 
     print(f"silver_ref trigger response: {result}")
@@ -101,15 +113,10 @@ def wait_for_silver_ref(**context) -> dict[str, Any]:
 def trigger_bronze_daily(**context) -> str:
     client = RsFoundryClient.from_env()
 
-    payload = {
-        "triggered_by": "airflow",
-        "dag_id": context["dag"].dag_id,
-        "dag_run_id": context["run_id"],
-        "task_id": context["task"].task_id,
-        "logical_date": context["logical_date"].isoformat(),
-    }
-
-    result = client.trigger_bronze_daily(payload)
+    result = client.trigger_bronze_daily(
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     run_id = result["run_id"]
 
     print(f"bronze_daily trigger response: {result}")
@@ -133,7 +140,11 @@ def trigger_silver_daily(**context) -> str:
 
     bronze_run_id = bronze_run["run_id"]
 
-    result = client.trigger_silver_daily(bronze_run_id)
+    result = client.trigger_silver_daily(
+        bronze_run_id,
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     silver_run_id = result["run_id"]
 
     print(f"silver_daily trigger response: {result}")
@@ -152,8 +163,8 @@ def trigger_silver_conformed(**context) -> str:
 
     ti = context["ti"]
 
-    # We still depend on silver tasks in the DAG graph,
-    # but the current Rust conformed pipeline expects BRONZE run IDs.
+    # The DAG depends on the silver branches completing first,
+    # but the current Rust conformed pipeline contract expects BRONZE run IDs.
     bronze_ref_run = ti.xcom_pull(task_ids="wait_for_bronze_ref")
     bronze_daily_run = ti.xcom_pull(task_ids="wait_for_bronze_daily")
 
@@ -166,7 +177,12 @@ def trigger_silver_conformed(**context) -> str:
     ref_run_id = bronze_ref_run["run_id"]
     daily_run_id = bronze_daily_run["run_id"]
 
-    result = client.trigger_silver_conformed(ref_run_id, daily_run_id)
+    result = client.trigger_silver_conformed(
+        ref_run_id,
+        daily_run_id,
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     conformed_run_id = result["run_id"]
 
     print(f"silver_conformed trigger response: {result}")

@@ -19,3 +19,5 @@ orchestration/airflow/dags/__pycache__/
 orchestration/airflow/plugins/__pycache__/
 orchestration/airflow/config/__pycache__/
 *.pyc
+
+data/

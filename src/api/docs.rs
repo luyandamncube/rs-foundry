@@ -2,9 +2,8 @@
 use utoipa::OpenApi;
 
 use crate::api::models::{
-    BronzeJobRequest, BronzeJobResponse, HealthResponse, ReadyResponse, RunListResponse,
-    RunResponse, SilverConformedJobRequest, SilverConformedJobResponse, SilverDailyJobRequest,
-    SilverDailyJobResponse, SilverRefJobRequest, SilverRefJobResponse,
+    HealthResponse, JobTriggerRequest, JobTriggerResponse, OrchestrationMetadata, ReadyResponse,
+    RunListResponse, RunResponse,
 };
 
 #[derive(OpenApi)]
@@ -24,14 +23,9 @@ use crate::api::models::{
         schemas(
             HealthResponse,
             ReadyResponse,
-            BronzeJobRequest,
-            BronzeJobResponse,
-            SilverRefJobRequest,
-            SilverRefJobResponse,
-            SilverDailyJobRequest,
-            SilverDailyJobResponse,
-            SilverConformedJobRequest,
-            SilverConformedJobResponse,
+            OrchestrationMetadata,
+            JobTriggerRequest,
+            JobTriggerResponse,
             RunResponse,
             RunListResponse
         )

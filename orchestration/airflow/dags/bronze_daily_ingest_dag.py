@@ -1,4 +1,4 @@
-# orchestration\airflow\dags\bronze_daily_ingest_dag.py
+# orchestration/airflow/dags/bronze_daily_ingest_dag.py
 from __future__ import annotations
 
 import os
@@ -12,18 +12,25 @@ from airflow.providers.standard.operators.python import PythonOperator
 from rs_foundry_client import RsFoundryClient, RsFoundryClientError
 
 
-def trigger_bronze_daily(**context) -> str:
-    client = RsFoundryClient.from_env()
+def build_orchestration_context(context: dict[str, Any]) -> dict[str, Any]:
+    ti = context["ti"]
 
-    payload = {
-        "triggered_by": "airflow",
+    return {
+        "orchestrator": "airflow",
         "dag_id": context["dag"].dag_id,
         "dag_run_id": context["run_id"],
         "task_id": context["task"].task_id,
-        "logical_date": context["logical_date"].isoformat(),
+        "try_number": ti.try_number,
     }
 
-    result = client.trigger_bronze_daily(payload)
+
+def trigger_bronze_daily(**context) -> str:
+    client = RsFoundryClient.from_env()
+
+    result = client.trigger_bronze_daily(
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     run_id = result["run_id"]
 
     print(f"bronze_daily trigger response: {result}")

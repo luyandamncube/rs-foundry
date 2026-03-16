@@ -16,61 +16,34 @@ pub struct ReadyResponse {
     pub checks: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct BronzeJobRequest {
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Default)]
+pub struct OrchestrationMetadata {
+    pub orchestrator: Option<String>,
+    pub dag_id: Option<String>,
+    pub dag_run_id: Option<String>,
+    pub task_id: Option<String>,
+    pub try_number: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Default)]
+pub struct JobTriggerRequest {
     pub requested_by: Option<String>,
+    #[serde(default)]
+    pub upstream_run_ids: Vec<String>,
+    pub orchestration: Option<OrchestrationMetadata>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct BronzeJobResponse {
+pub struct JobTriggerResponse {
     pub status: String,
     pub job_name: String,
     pub run_id: String,
-    pub source_name: String,
-    pub raw_path: String,
-    pub bronze_path: String,
-    pub record_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct SilverRefJobRequest {
-    pub bronze_run_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct SilverRefJobResponse {
-    pub status: String,
-    pub job_name: String,
-    pub run_id: String,
-    pub bronze_run_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct SilverDailyJobRequest {
-    pub bronze_run_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct SilverDailyJobResponse {
-    pub status: String,
-    pub job_name: String,
-    pub run_id: String,
-    pub bronze_run_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct SilverConformedJobRequest {
-    pub ref_run_id: String,
-    pub daily_run_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct SilverConformedJobResponse {
-    pub status: String,
-    pub job_name: String,
-    pub run_id: String,
-    pub ref_run_id: String,
-    pub daily_run_id: String,
+    pub upstream_run_ids: Vec<String>,
+    pub source_name: Option<String>,
+    pub raw_path: Option<String>,
+    pub bronze_path: Option<String>,
+    pub silver_path: Option<String>,
+    pub record_count: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -81,6 +54,8 @@ pub struct RunResponse {
     pub created_at: String,
     pub updated_at: String,
     pub error_message: Option<String>,
+    pub orchestration: OrchestrationMetadata,
+    pub upstream_run_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

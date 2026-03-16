@@ -1,0 +1,47 @@
+[
+  {
+    "ref_id": "R001",
+    "ref_name": "Alpha",
+    "ref_type": "site",
+    "ref_name_normalized": "alpha",
+    "ref_type_normalized": "site",
+    "is_active": true,
+    "updated_at": null,
+    "bronze_run_id": "cf18175c-49e0-41c2-9379-d2790993c6a3",
+    "source_name": "ref_example",
+    "source_file": "ref_source.json",
+    "bronze_ingested_at": "2026-03-16T08:49:32.750554096Z",
+    "silver_built_at": "2026-03-16T08:49:34.955709249Z",
+    "load_date": "2026-03-16"
+  },
+  {
+    "ref_id": "R002",
+    "ref_name": "Beta",
+    "ref_type": "site",
+    "ref_name_normalized": "beta",
+    "ref_type_normalized": "site",
+    "is_active": true,
+    "updated_at": null,
+    "bronze_run_id": "cf18175c-49e0-41c2-9379-d2790993c6a3",
+    "source_name": "ref_example",
+    "source_file": "ref_source.json",
+    "bronze_ingested_at": "2026-03-16T08:49:32.750554096Z",
+    "silver_built_at": "2026-03-16T08:49:34.955709249Z",
+    "load_date": "2026-03-16"
+  },
+  {
+    "ref_id": "R003",
+    "ref_name": "Gamma",
+    "ref_type": "region",
+    "ref_name_normalized": "gamma",
+    "ref_type_normalized": "region",
+    "is_active": false,
+    "updated_at": null,
+    "bronze_run_id": "cf18175c-49e0-41c2-9379-d2790993c6a3",
+    "source_name": "ref_example",
+    "source_file": "ref_source.json",
+    "bronze_ingested_at": "2026-03-16T08:49:32.750554096Z",
+    "silver_built_at": "2026-03-16T08:49:34.955709249Z",
+    "load_date": "2026-03-16"
+  }
+]

@@ -7,9 +7,8 @@ use axum::{
 use uuid::Uuid;
 
 use crate::api::models::{
-    BronzeJobRequest, BronzeJobResponse, HealthResponse, ReadyResponse, RunListResponse,
-    RunResponse, SilverConformedJobRequest, SilverConformedJobResponse, SilverDailyJobRequest,
-    SilverDailyJobResponse, SilverRefJobRequest, SilverRefJobResponse,
+    HealthResponse, JobTriggerRequest, JobTriggerResponse, OrchestrationMetadata, ReadyResponse,
+    RunListResponse, RunResponse,
 };
 use crate::api::state::AppState;
 use crate::core::types::{RunId, RunStatus};
@@ -56,22 +55,31 @@ pub async fn ready(State(state): State<AppState>) -> Json<ReadyResponse> {
 #[utoipa::path(
     post,
     path = "/jobs/bronze/ref",
-    request_body = BronzeJobRequest,
+    request_body = JobTriggerRequest,
     responses(
-        (status = 200, description = "Bronze ref job submitted", body = BronzeJobResponse),
+        (status = 200, description = "Bronze ref job submitted", body = JobTriggerResponse),
+        (status = 400, description = "Bad request"),
         (status = 500, description = "Internal server error")
     ),
     tag = "jobs"
 )]
 pub async fn submit_bronze_ref_job(
     State(state): State<AppState>,
-    Json(_request): Json<BronzeJobRequest>,
-) -> Result<Json<BronzeJobResponse>, (StatusCode, String)> {
+    Json(request): Json<JobTriggerRequest>,
+) -> Result<Json<JobTriggerResponse>, (StatusCode, String)> {
+    validate_upstream_count("bronze_ref", &request.upstream_run_ids, 0)?;
+
     let run_id = RunId::new();
 
-    run_registry::create_run(&state.db_pool, &run_id, "bronze_ref")
-        .await
-        .map_err(internal_error)?;
+    run_registry::create_run(
+        &state.db_pool,
+        &run_id,
+        "bronze_ref",
+        request.orchestration.as_ref(),
+        &request.upstream_run_ids,
+    )
+    .await
+    .map_err(internal_error)?;
 
     run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Running, None)
         .await
@@ -83,14 +91,16 @@ pub async fn submit_bronze_ref_job(
                 .await
                 .map_err(internal_error)?;
 
-            Ok(Json(BronzeJobResponse {
+            Ok(Json(JobTriggerResponse {
                 status: "submitted".to_string(),
                 job_name: "bronze_ref".to_string(),
                 run_id: run_id.0.to_string(),
-                source_name: result.source_name,
-                raw_path: result.raw_path.display().to_string(),
-                bronze_path: result.bronze_path.display().to_string(),
-                record_count: result.record_count,
+                upstream_run_ids: vec![],
+                source_name: Some(result.source_name),
+                raw_path: Some(result.raw_path.display().to_string()),
+                bronze_path: Some(result.bronze_path.display().to_string()),
+                silver_path: None,
+                record_count: Some(result.record_count),
             }))
         }
         Err(e) => {
@@ -112,22 +122,31 @@ pub async fn submit_bronze_ref_job(
 #[utoipa::path(
     post,
     path = "/jobs/bronze/daily",
-    request_body = BronzeJobRequest,
+    request_body = JobTriggerRequest,
     responses(
-        (status = 200, description = "Bronze daily job submitted", body = BronzeJobResponse),
+        (status = 200, description = "Bronze daily job submitted", body = JobTriggerResponse),
+        (status = 400, description = "Bad request"),
         (status = 500, description = "Internal server error")
     ),
     tag = "jobs"
 )]
 pub async fn submit_bronze_daily_job(
     State(state): State<AppState>,
-    Json(_request): Json<BronzeJobRequest>,
-) -> Result<Json<BronzeJobResponse>, (StatusCode, String)> {
+    Json(request): Json<JobTriggerRequest>,
+) -> Result<Json<JobTriggerResponse>, (StatusCode, String)> {
+    validate_upstream_count("bronze_daily", &request.upstream_run_ids, 0)?;
+
     let run_id = RunId::new();
 
-    run_registry::create_run(&state.db_pool, &run_id, "bronze_daily")
-        .await
-        .map_err(internal_error)?;
+    run_registry::create_run(
+        &state.db_pool,
+        &run_id,
+        "bronze_daily",
+        request.orchestration.as_ref(),
+        &request.upstream_run_ids,
+    )
+    .await
+    .map_err(internal_error)?;
 
     run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Running, None)
         .await
@@ -139,14 +158,16 @@ pub async fn submit_bronze_daily_job(
                 .await
                 .map_err(internal_error)?;
 
-            Ok(Json(BronzeJobResponse {
+            Ok(Json(JobTriggerResponse {
                 status: "submitted".to_string(),
                 job_name: "bronze_daily".to_string(),
                 run_id: run_id.0.to_string(),
-                source_name: result.source_name,
-                raw_path: result.raw_path.display().to_string(),
-                bronze_path: result.bronze_path.display().to_string(),
-                record_count: result.record_count,
+                upstream_run_ids: vec![],
+                source_name: Some(result.source_name),
+                raw_path: Some(result.raw_path.display().to_string()),
+                bronze_path: Some(result.bronze_path.display().to_string()),
+                silver_path: None,
+                record_count: Some(result.record_count),
             }))
         }
         Err(e) => {
@@ -168,9 +189,9 @@ pub async fn submit_bronze_daily_job(
 #[utoipa::path(
     post,
     path = "/jobs/silver/ref",
-    request_body = SilverRefJobRequest,
+    request_body = JobTriggerRequest,
     responses(
-        (status = 200, description = "Silver ref job submitted", body = SilverRefJobResponse),
+        (status = 200, description = "Silver ref job submitted", body = JobTriggerResponse),
         (status = 400, description = "Bad request"),
         (status = 500, description = "Internal server error")
     ),
@@ -178,16 +199,22 @@ pub async fn submit_bronze_daily_job(
 )]
 pub async fn submit_silver_ref_job(
     State(state): State<AppState>,
-    Json(request): Json<SilverRefJobRequest>,
-) -> Result<Json<SilverRefJobResponse>, (StatusCode, String)> {
-    let upstream_bronze_run_id = Uuid::parse_str(&request.bronze_run_id)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("invalid bronze_run_id: {e}")))?;
+    Json(request): Json<JobTriggerRequest>,
+) -> Result<Json<JobTriggerResponse>, (StatusCode, String)> {
+    validate_upstream_count("silver_ref", &request.upstream_run_ids, 1)?;
 
+    let upstream_bronze_run_id = parse_run_id(&request.upstream_run_ids[0], "upstream_run_ids[0]")?;
     let run_id = RunId::new();
 
-    run_registry::create_run(&state.db_pool, &run_id, "silver_ref")
-        .await
-        .map_err(internal_error)?;
+    run_registry::create_run(
+        &state.db_pool,
+        &run_id,
+        "silver_ref",
+        request.orchestration.as_ref(),
+        &request.upstream_run_ids,
+    )
+    .await
+    .map_err(internal_error)?;
 
     run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Running, None)
         .await
@@ -195,23 +222,27 @@ pub async fn submit_silver_ref_job(
 
     match crate::jobs::silver_ref_job::execute_with_run_id_and_upstream(
         run_id.clone(),
-        RunId(upstream_bronze_run_id),
+        upstream_bronze_run_id,
     ) {
         Ok(_result) => {
             run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Succeeded, None)
                 .await
                 .map_err(internal_error)?;
 
-            Ok(Json(SilverRefJobResponse {
+            Ok(Json(JobTriggerResponse {
                 status: "submitted".to_string(),
                 job_name: "silver_ref".to_string(),
                 run_id: run_id.0.to_string(),
-                bronze_run_id: request.bronze_run_id,
+                upstream_run_ids: request.upstream_run_ids,
+                source_name: None,
+                raw_path: None,
+                bronze_path: None,
+                silver_path: None,
+                record_count: None,
             }))
         }
         Err(e) => {
             let message = e.to_string();
-
             let _ = run_registry::update_run_status(
                 &state.db_pool,
                 &run_id,
@@ -228,9 +259,9 @@ pub async fn submit_silver_ref_job(
 #[utoipa::path(
     post,
     path = "/jobs/silver/daily",
-    request_body = SilverDailyJobRequest,
+    request_body = JobTriggerRequest,
     responses(
-        (status = 200, description = "Silver daily job submitted", body = SilverDailyJobResponse),
+        (status = 200, description = "Silver daily job submitted", body = JobTriggerResponse),
         (status = 400, description = "Bad request"),
         (status = 500, description = "Internal server error")
     ),
@@ -238,16 +269,22 @@ pub async fn submit_silver_ref_job(
 )]
 pub async fn submit_silver_daily_job(
     State(state): State<AppState>,
-    Json(request): Json<SilverDailyJobRequest>,
-) -> Result<Json<SilverDailyJobResponse>, (StatusCode, String)> {
-    let upstream_bronze_run_id = Uuid::parse_str(&request.bronze_run_id)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("invalid bronze_run_id: {e}")))?;
+    Json(request): Json<JobTriggerRequest>,
+) -> Result<Json<JobTriggerResponse>, (StatusCode, String)> {
+    validate_upstream_count("silver_daily", &request.upstream_run_ids, 1)?;
 
+    let upstream_bronze_run_id = parse_run_id(&request.upstream_run_ids[0], "upstream_run_ids[0]")?;
     let run_id = RunId::new();
 
-    run_registry::create_run(&state.db_pool, &run_id, "silver_daily")
-        .await
-        .map_err(internal_error)?;
+    run_registry::create_run(
+        &state.db_pool,
+        &run_id,
+        "silver_daily",
+        request.orchestration.as_ref(),
+        &request.upstream_run_ids,
+    )
+    .await
+    .map_err(internal_error)?;
 
     run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Running, None)
         .await
@@ -255,23 +292,27 @@ pub async fn submit_silver_daily_job(
 
     match crate::jobs::silver_daily_job::execute_with_run_id_and_upstream(
         run_id.clone(),
-        RunId(upstream_bronze_run_id),
+        upstream_bronze_run_id,
     ) {
         Ok(_result) => {
             run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Succeeded, None)
                 .await
                 .map_err(internal_error)?;
 
-            Ok(Json(SilverDailyJobResponse {
+            Ok(Json(JobTriggerResponse {
                 status: "submitted".to_string(),
                 job_name: "silver_daily".to_string(),
                 run_id: run_id.0.to_string(),
-                bronze_run_id: request.bronze_run_id,
+                upstream_run_ids: request.upstream_run_ids,
+                source_name: None,
+                raw_path: None,
+                bronze_path: None,
+                silver_path: None,
+                record_count: None,
             }))
         }
         Err(e) => {
             let message = e.to_string();
-
             let _ = run_registry::update_run_status(
                 &state.db_pool,
                 &run_id,
@@ -288,9 +329,9 @@ pub async fn submit_silver_daily_job(
 #[utoipa::path(
     post,
     path = "/jobs/silver/conformed",
-    request_body = SilverConformedJobRequest,
+    request_body = JobTriggerRequest,
     responses(
-        (status = 200, description = "Silver conformed job submitted", body = SilverConformedJobResponse),
+        (status = 200, description = "Silver conformed job submitted", body = JobTriggerResponse),
         (status = 400, description = "Bad request"),
         (status = 500, description = "Internal server error")
     ),
@@ -298,19 +339,23 @@ pub async fn submit_silver_daily_job(
 )]
 pub async fn submit_silver_conformed_job(
     State(state): State<AppState>,
-    Json(request): Json<SilverConformedJobRequest>,
-) -> Result<Json<SilverConformedJobResponse>, (StatusCode, String)> {
-    let upstream_ref_run_id = Uuid::parse_str(&request.ref_run_id)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("invalid ref_run_id: {e}")))?;
+    Json(request): Json<JobTriggerRequest>,
+) -> Result<Json<JobTriggerResponse>, (StatusCode, String)> {
+    validate_upstream_count("silver_conformed", &request.upstream_run_ids, 2)?;
 
-    let upstream_daily_run_id = Uuid::parse_str(&request.daily_run_id)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("invalid daily_run_id: {e}")))?;
-
+    let upstream_ref_run_id = parse_run_id(&request.upstream_run_ids[0], "upstream_run_ids[0]")?;
+    let upstream_daily_run_id = parse_run_id(&request.upstream_run_ids[1], "upstream_run_ids[1]")?;
     let run_id = RunId::new();
 
-    run_registry::create_run(&state.db_pool, &run_id, "silver_conformed")
-        .await
-        .map_err(internal_error)?;
+    run_registry::create_run(
+        &state.db_pool,
+        &run_id,
+        "silver_conformed",
+        request.orchestration.as_ref(),
+        &request.upstream_run_ids,
+    )
+    .await
+    .map_err(internal_error)?;
 
     run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Running, None)
         .await
@@ -318,25 +363,28 @@ pub async fn submit_silver_conformed_job(
 
     match crate::jobs::silver_conformed_job::execute_with_run_id_and_upstreams(
         run_id.clone(),
-        RunId(upstream_ref_run_id),
-        RunId(upstream_daily_run_id),
+        upstream_ref_run_id,
+        upstream_daily_run_id,
     ) {
         Ok(_result) => {
             run_registry::update_run_status(&state.db_pool, &run_id, RunStatus::Succeeded, None)
                 .await
                 .map_err(internal_error)?;
 
-            Ok(Json(SilverConformedJobResponse {
+            Ok(Json(JobTriggerResponse {
                 status: "submitted".to_string(),
                 job_name: "silver_conformed".to_string(),
                 run_id: run_id.0.to_string(),
-                ref_run_id: request.ref_run_id,
-                daily_run_id: request.daily_run_id,
+                upstream_run_ids: request.upstream_run_ids,
+                source_name: None,
+                raw_path: None,
+                bronze_path: None,
+                silver_path: None,
+                record_count: None,
             }))
         }
         Err(e) => {
             let message = e.to_string();
-
             let _ = run_registry::update_run_status(
                 &state.db_pool,
                 &run_id,
@@ -411,7 +459,40 @@ fn to_run_response(run: crate::core::types::RunRecord) -> RunResponse {
         created_at: run.created_at.to_rfc3339(),
         updated_at: run.updated_at.to_rfc3339(),
         error_message: run.error_message,
+        orchestration: OrchestrationMetadata {
+            orchestrator: run.orchestration.orchestrator,
+            dag_id: run.orchestration.orchestrator_dag_id,
+            dag_run_id: run.orchestration.orchestrator_dag_run_id,
+            task_id: run.orchestration.orchestrator_task_id,
+            try_number: run.orchestration.orchestrator_try_number,
+        },
+        upstream_run_ids: run.upstream_run_ids,
     }
+}
+
+fn parse_run_id(value: &str, field_name: &str) -> Result<RunId, (StatusCode, String)> {
+    let uuid = Uuid::parse_str(value)
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("invalid {field_name}: {e}")))?;
+
+    Ok(RunId(uuid))
+}
+
+fn validate_upstream_count(
+    job_name: &str,
+    upstream_run_ids: &[String],
+    expected: usize,
+) -> Result<(), (StatusCode, String)> {
+    if upstream_run_ids.len() != expected {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!(
+                "{job_name} expects {expected} upstream_run_ids but received {}",
+                upstream_run_ids.len()
+            ),
+        ));
+    }
+
+    Ok(())
 }
 
 fn internal_error<E: ToString>(error: E) -> (StatusCode, String) {

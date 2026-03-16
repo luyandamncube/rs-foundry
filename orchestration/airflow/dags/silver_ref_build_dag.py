@@ -1,4 +1,4 @@
-# orchestration\airflow\dags\silver_ref_build_dag.py
+# orchestration/airflow/dags/silver_ref_build_dag.py
 from __future__ import annotations
 
 import os
@@ -12,18 +12,25 @@ from airflow.providers.standard.operators.python import PythonOperator
 from rs_foundry_client import RsFoundryClient, RsFoundryClientError
 
 
-def trigger_bronze_ref(**context) -> str:
-    client = RsFoundryClient.from_env()
+def build_orchestration_context(context: dict[str, Any]) -> dict[str, Any]:
+    ti = context["ti"]
 
-    payload = {
-        "triggered_by": "airflow",
+    return {
+        "orchestrator": "airflow",
         "dag_id": context["dag"].dag_id,
         "dag_run_id": context["run_id"],
         "task_id": context["task"].task_id,
-        "logical_date": context["logical_date"].isoformat(),
+        "try_number": ti.try_number,
     }
 
-    result = client.trigger_bronze_ref(payload)
+
+def trigger_bronze_ref(**context) -> str:
+    client = RsFoundryClient.from_env()
+
+    result = client.trigger_bronze_ref(
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     run_id = result["run_id"]
 
     print(f"bronze_ref trigger response: {result}")
@@ -85,7 +92,11 @@ def trigger_silver_ref(**context) -> str:
 
     bronze_run_id = bronze_run["run_id"]
 
-    result = client.trigger_silver_ref(bronze_run_id)
+    result = client.trigger_silver_ref(
+        bronze_run_id,
+        requested_by="airflow",
+        orchestration=build_orchestration_context(context),
+    )
     silver_run_id = result["run_id"]
 
     print(f"silver_ref trigger response: {result}")
@@ -133,3 +144,4 @@ with DAG(
         >> trigger_silver_ref_task
         >> wait_for_silver_ref_task
     )
+    

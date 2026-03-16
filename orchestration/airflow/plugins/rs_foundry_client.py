@@ -1,4 +1,4 @@
-# orchestration\airflow\plugins\rs_foundry_client.py
+# orchestration/airflow/plugins/rs_foundry_client.py
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -22,25 +22,83 @@ class RsFoundryClient:
     def ping_runner(self) -> dict[str, Any]:
         return self._get("/health")
 
-    def trigger_bronze_ref(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._post("/jobs/bronze/ref", payload or {})
+    def trigger_bronze_ref(
+        self,
+        *,
+        requested_by: str | None = None,
+        orchestration: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._post(
+            "/jobs/bronze/ref",
+            self._build_trigger_payload(
+                requested_by=requested_by,
+                upstream_run_ids=[],
+                orchestration=orchestration,
+            ),
+        )
 
-    def trigger_bronze_daily(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._post("/jobs/bronze/daily", payload or {})
+    def trigger_bronze_daily(
+        self,
+        *,
+        requested_by: str | None = None,
+        orchestration: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._post(
+            "/jobs/bronze/daily",
+            self._build_trigger_payload(
+                requested_by=requested_by,
+                upstream_run_ids=[],
+                orchestration=orchestration,
+            ),
+        )
 
-    def trigger_silver_ref(self, bronze_run_id: str) -> dict[str, Any]:
-        return self._post("/jobs/silver/ref", {"bronze_run_id": bronze_run_id})
+    def trigger_silver_ref(
+        self,
+        bronze_run_id: str,
+        *,
+        requested_by: str | None = None,
+        orchestration: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._post(
+            "/jobs/silver/ref",
+            self._build_trigger_payload(
+                requested_by=requested_by,
+                upstream_run_ids=[bronze_run_id],
+                orchestration=orchestration,
+            ),
+        )
 
-    def trigger_silver_daily(self, bronze_run_id: str) -> dict[str, Any]:
-        return self._post("/jobs/silver/daily", {"bronze_run_id": bronze_run_id})
+    def trigger_silver_daily(
+        self,
+        bronze_run_id: str,
+        *,
+        requested_by: str | None = None,
+        orchestration: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._post(
+            "/jobs/silver/daily",
+            self._build_trigger_payload(
+                requested_by=requested_by,
+                upstream_run_ids=[bronze_run_id],
+                orchestration=orchestration,
+            ),
+        )
 
-    def trigger_silver_conformed(self, ref_run_id: str, daily_run_id: str) -> dict[str, Any]:
+    def trigger_silver_conformed(
+        self,
+        ref_run_id: str,
+        daily_run_id: str,
+        *,
+        requested_by: str | None = None,
+        orchestration: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         return self._post(
             "/jobs/silver/conformed",
-            {
-                "ref_run_id": ref_run_id,
-                "daily_run_id": daily_run_id,
-            },
+            self._build_trigger_payload(
+                requested_by=requested_by,
+                upstream_run_ids=[ref_run_id, daily_run_id],
+                orchestration=orchestration,
+            ),
         )
 
     def get_run(self, run_id: str) -> dict[str, Any]:
@@ -48,6 +106,19 @@ class RsFoundryClient:
 
     def list_runs(self) -> dict[str, Any]:
         return self._get("/runs")
+
+    def _build_trigger_payload(
+        self,
+        *,
+        requested_by: str | None,
+        upstream_run_ids: list[str],
+        orchestration: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        return {
+            "requested_by": requested_by,
+            "upstream_run_ids": upstream_run_ids,
+            "orchestration": orchestration,
+        }
 
     def _get(self, path: str) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
@@ -80,3 +151,5 @@ class RsFoundryClient:
             )
 
         return response.json()
+
+        
