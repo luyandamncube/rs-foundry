@@ -1,6 +1,5 @@
 rs-foundry/
 ├── Cargo.toml
-├── DIRTREE.md
 ├── DIRTREE.txt
 ├── Makefile
 ├── README.md
@@ -14,17 +13,12 @@ rs-foundry/
 │   │   └── app.toml
 │   └── prod
 │       └── app.toml
-├── data
-│   ├── bronze
-│   ├── checkpoints
-│   ├── gold
-│   ├── raw
-│   ├── runs
-│   └── silver
 ├── docker
+│   ├── airflow.Dockerfile
 │   ├── notebook.Dockerfile
 │   ├── postgres-init
-│   │   └── 001_init.sql
+│   │   ├── 001_init.sql
+│   │   └── 002_runs_orchestration_metadata.sql
 │   ├── runner.Dockerfile
 │   └── worker.Dockerfile
 ├── docker-compose.yml
@@ -41,17 +35,36 @@ rs-foundry/
 │   │   ├── PHASE_3_CONTROL_PLANE.md
 │   │   ├── PHASE_4_SILVER.md
 │   │   ├── PHASE_5_ASYNC.md
-│   │   └── PHASE_6_POLISH.md
+│   │   ├── PHASE_6_POLISH.md
+│   │   └── PHASE_7_AIRFLOW_FOUNDATION.md
 │   └── workflow.md
 ├── notebooks
 │   └── bronze
 │       ├── 00_source_profile_00_test.ipynb
 │       ├── 00_source_profile_01_comments.ipynb
 │       └── 00_test_rust_kernel.ipynb
+├── orchestration
+│   └── airflow
+│       ├── README.md
+│       ├── config
+│       │   └── airflow_local_settings.py
+│       ├── dags
+│       │   ├── bronze_daily_ingest_dag.py
+│       │   ├── bronze_ref_ingest_dag.py
+│       │   ├── ping_runner.py
+│       │   ├── silver_conformed_pipeline_dag.py
+│       │   ├── silver_daily_build_dag.py
+│       │   └── silver_ref_build_dag.py
+│       ├── env
+│       │   └── airflow.env
+│       └── plugins
+│           ├── rs_foundry_airflow.py
+│           └── rs_foundry_client.py
 ├── rust-toolchain.toml
 ├── scaffhold_from_tree.py
 ├── src
 │   ├── api
+│   │   ├── docs.rs
 │   │   ├── handlers.rs
 │   │   ├── mod.rs
 │   │   ├── models.rs

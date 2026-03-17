@@ -12,6 +12,16 @@ def strip_comment(line: str) -> str:
     return re.sub(r"\s+#.*$", "", line).rstrip()
 
 
+def is_tree_separator(line: str) -> bool:
+    """
+    Ignore visual spacer lines like:
+        │
+        │   
+    """
+    stripped = line.strip()
+    return stripped in {"│", ""}
+
+
 def get_level(line: str) -> int:
     """
     Determine nesting level from tree format.
@@ -35,28 +45,41 @@ def extract_name(line: str) -> str:
 
 def scaffold_from_tree(tree_text: str):
     stack = []
+    root_set = False
 
     for raw_line in tree_text.splitlines():
         line = strip_comment(raw_line)
 
-        if not line.strip():
+        if is_tree_separator(line):
             continue
 
-        # Root folder (no ├── or └──)
+        # Root folder: only allow this once, on the first real line
+        if not root_set and "├──" not in line and "└──" not in line:
+            root_name = line.strip().rstrip("/")
+            if not root_name:
+                continue
+
+            stack = [root_name]
+            os.makedirs(root_name, exist_ok=True)
+            print(f"Created dir: {root_name}")
+            root_set = True
+            continue
+
+        # Ignore any malformed non-root line that doesn't contain tree markers
         if "├──" not in line and "└──" not in line:
-            name = line.strip()
-            stack = [name.rstrip("/")]
-            os.makedirs(stack[0], exist_ok=True)
-            print(f"Created dir: {stack[0]}")
+            print(f"Skipping unrecognized line: {raw_line!r}")
             continue
 
         level = get_level(line)
         name = extract_name(line)
 
+        if not name:
+            continue
+
         is_dir = name.endswith("/")
         clean_name = name.rstrip("/")
 
-        # Adjust stack depth (root is stack[0], children follow)
+        # stack[0] = root, then level 0 items are direct children of root
         stack = stack[: level + 1]
         stack.append(clean_name)
 
@@ -69,7 +92,8 @@ def scaffold_from_tree(tree_text: str):
             parent = os.path.dirname(path)
             if parent:
                 os.makedirs(parent, exist_ok=True)
-            open(path, "a").close()
+            with open(path, "a", encoding="utf-8"):
+                pass
             print(f"Created file: {path}")
 
     print("\n✅ Scaffold created correctly.")
