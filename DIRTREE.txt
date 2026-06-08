@@ -1,4 +1,5 @@
 rs-foundry/
+├── Cargo.lock
 ├── Cargo.toml
 ├── DIRTREE.txt
 ├── Makefile

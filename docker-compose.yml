@@ -8,6 +8,9 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: rs_foundry
       POSTGRES_PASSWORD: rs_foundry
+    cpus: 2.0
+    mem_limit: 2g
+    memswap_limit: 2g
     ports:
       - "5432:5432"
     volumes:
@@ -31,6 +34,9 @@ services:
       DATABASE_URL: postgres://rs_foundry:rs_foundry@postgres:5432/rs_foundry
       DATA_ROOT: /app/data
       CONF_ROOT: /app/conf
+    cpus: 6.0
+    mem_limit: 8g
+    memswap_limit: 8g
     ports:
       - "8080:8080"
     volumes:
